@@ -43,7 +43,9 @@ public:
     void clear();   // clear buffer
     void push_back(const T&); // insert new event
     T dump_front();
+    T pop(int index);
     string unparse() const; // dump contents in the buffer to a string
+    void print() const;
 
 private:
     // Mutex, Condition and ReadWriteLock must be POD type to use shared memory
@@ -284,6 +286,19 @@ ShmRingBuffer<T>::push_back(const T& e)
     _lock->write_unlock();
 }
 
+template <typename T> inline T 
+ShmRingBuffer<T>::pop(int index)
+{
+    assert(_hdr != NULL);
+    assert(_v != NULL);
+
+    T ret;
+    _lock->read_lock();
+    ret = *(_v + index);
+    _lock->read_unlock();
+    return ret;
+}
+
 template <typename T> inline T
 ShmRingBuffer<T>::dump_front()
 {
@@ -317,6 +332,32 @@ ShmRingBuffer<T>::unparse() const {
     }
     _lock->read_unlock();
     return ret;
+}
+
+template <typename T> inline void
+ShmRingBuffer<T>::print() const {
+    assert(_hdr != NULL);
+    assert(_v != NULL);
+    string ret;
+    
+    int i = _hdr->_begin;
+    while(1){
+        if (i !=_hdr->_end){
+            _lock->read_lock();
+            std::cout<<_hdr->_begin<<std::endl;
+            std::cout<<_hdr->_end<<std::endl;
+            ret += string((_v + i)->unparse()) + "\n"; 
+            i = (i+1) % _hdr->_capacity;
+            std::cout<<ret<<std::endl;
+            _lock->read_unlock();
+            
+        }else{
+            usleep(2000000);
+        }
+       
+    }
+
+    
 }
 
 

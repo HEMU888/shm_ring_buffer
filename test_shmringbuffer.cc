@@ -9,7 +9,7 @@
 struct LogNode {
     int ts;  // timestamp
     int len; // length
-#define MAX_LOG_LEN 256
+#define MAX_LOG_LEN 256000
     char log[MAX_LOG_LEN];
 
     const std::string unparse() {
@@ -34,7 +34,7 @@ int main()
             snprintf(log.log, MAX_LOG_LEN, "%zu: %d", buffer.end(), i);
             buffer.push_back(log);
             std::cout << "child: insert " << i << ", index " << buffer.end() << std::endl; // FIXME
-            usleep(rand()%1000+500);
+            usleep(rand()%1000+500000);
         }
         exit(0);
     } else if (pid > 0) {
@@ -46,7 +46,7 @@ int main()
             snprintf(log.log, MAX_LOG_LEN, "%zu: %d", buffer.end(), i);
             buffer.push_back(log);
             std::cout << "parent: insert " << i << ", index " << buffer.end() << std::endl; // FIXME
-            usleep(rand()%900+500);
+            usleep(rand()%900+500000);
         }
 
         usleep(5000); // wait for child process exit

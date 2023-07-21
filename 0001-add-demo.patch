@@ -1,0 +1,343 @@
+From f4bb3d6a50b3892e71b7a662494e660c3dc54383 Mon Sep 17 00:00:00 2001
+From: Liu Jian <liujian0628@gwm.cn>
+Date: Fri, 21 Jul 2023 16:37:04 +0800
+Subject: [PATCH] add demo
+
+---
+ Makefile              |  2 +-
+ Makefile.bak          | 17 +++++++++++++++
+ Makefile1             | 17 +++++++++++++++
+ Makefile2             | 17 +++++++++++++++
+ build.sh              | 11 ++++++++++
+ build.sh.bak          |  9 ++++++++
+ log_consumer.cc       | 50 +++++++++++++++++++++++++++++++++++++++++++
+ log_creator.cc        | 43 +++++++++++++++++++++++++++++++++++++
+ shmringbuffer.hh      | 41 +++++++++++++++++++++++++++++++++++
+ test_shmringbuffer.cc |  6 +++---
+ 10 files changed, 209 insertions(+), 4 deletions(-)
+ create mode 100644 Makefile.bak
+ create mode 100644 Makefile1
+ create mode 100644 Makefile2
+ create mode 100755 build.sh
+ create mode 100755 build.sh.bak
+ create mode 100644 log_consumer.cc
+ create mode 100644 log_creator.cc
+
+diff --git a/Makefile b/Makefile
+index 629eb61..e7893f0 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,6 +1,6 @@
+ CC=g++
+ CFLAGS=-c -g -Wall
+-LDFLAGS=-lpthread
++LDFLAGS=-lpthread -lrt
+ SOURCES=test_shmringbuffer.cc
+ OBJECTS=$(SOURCES:.cc=.o)
+ EXECUTABLE=shmringbuf
+diff --git a/Makefile.bak b/Makefile.bak
+new file mode 100644
+index 0000000..e7893f0
+--- /dev/null
++++ b/Makefile.bak
+@@ -0,0 +1,17 @@
++CC=g++
++CFLAGS=-c -g -Wall
++LDFLAGS=-lpthread -lrt
++SOURCES=test_shmringbuffer.cc
++OBJECTS=$(SOURCES:.cc=.o)
++EXECUTABLE=shmringbuf
++
++all: $(SOURCES) $(EXECUTABLE)
++    
++$(EXECUTABLE): $(OBJECTS) 
++	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
++
++.cc.o:
++	$(CC) $(CFLAGS) $< -o $@
++
++clean:
++	rm -f $(OBJECTS) $(EXECUTABLE)
+diff --git a/Makefile1 b/Makefile1
+new file mode 100644
+index 0000000..6c7539c
+--- /dev/null
++++ b/Makefile1
+@@ -0,0 +1,17 @@
++CC=g++
++CFLAGS=-c -g -Wall
++LDFLAGS=-lpthread -lrt
++SOURCES=log_creator.cc
++OBJECTS=$(SOURCES:.cc=.o)
++EXECUTABLE=log_creator
++
++all: $(SOURCES) $(EXECUTABLE)
++    
++$(EXECUTABLE): $(OBJECTS) 
++	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
++
++.cc.o:
++	$(CC) $(CFLAGS) $< -o $@
++
++clean:
++	rm -f $(OBJECTS) $(EXECUTABLE)
+diff --git a/Makefile2 b/Makefile2
+new file mode 100644
+index 0000000..e422809
+--- /dev/null
++++ b/Makefile2
+@@ -0,0 +1,17 @@
++CC=g++
++CFLAGS=-c -g -Wall
++LDFLAGS=-lpthread -lrt
++SOURCES=log_consumer.cc
++OBJECTS=$(SOURCES:.cc=.o)
++EXECUTABLE=log_consumer
++
++all: $(SOURCES) $(EXECUTABLE)
++    
++$(EXECUTABLE): $(OBJECTS) 
++	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
++
++.cc.o:
++	$(CC) $(CFLAGS) $< -o $@
++
++clean:
++	rm -f $(OBJECTS) $(EXECUTABLE)
+diff --git a/build.sh b/build.sh
+new file mode 100755
+index 0000000..cc74259
+--- /dev/null
++++ b/build.sh
+@@ -0,0 +1,11 @@
++
++cp Makefile1 Makefile
++make clean
++cp Makefile2 Makefile
++make clean
++cp Makefile.bak Makefile
++make clean
++#cp Makefile1 Makefile
++#make
++#cp Makefile2 Makefile
++#make
+diff --git a/build.sh.bak b/build.sh.bak
+new file mode 100755
+index 0000000..a1765c7
+--- /dev/null
++++ b/build.sh.bak
+@@ -0,0 +1,9 @@
++
++cp Makefile1 Makefile
++make clean
++cp Makefile2 Makefile
++make clean
++cp Makefile1 Makefile
++make
++cp Makefile2 Makefile
++make
+diff --git a/log_consumer.cc b/log_consumer.cc
+new file mode 100644
+index 0000000..72b5d81
+--- /dev/null
++++ b/log_consumer.cc
+@@ -0,0 +1,50 @@
++#include <iostream>
++#include <cstdio>
++#include <unistd.h>
++#include <cstdlib>
++#include <cstring>
++#include <ctime>
++#include "shmringbuffer.hh"
++
++struct LogNode {
++    int ts;  // timestamp
++    int len; // length
++#define MAX_LOG_LEN 256000
++    char log[MAX_LOG_LEN];
++
++    const std::string unparse() {
++        return "[" + std::to_string(ts) + "] " + std::string(&log[0]);
++    }
++};
++
++int main()
++{
++    /* initialize random seed: */
++    srand (time(NULL));
++
++    const int CAPACITY = 20;
++   
++    {
++        // child process
++        //usleep(500);
++        ShmRingBuffer<LogNode> buffer(CAPACITY, false);
++        LogNode log;
++        int i = buffer.begin();
++        while(1){
++        if (i != buffer.end()){
++            
++            
++            log = buffer.pop(i);
++            i = (i+1) % buffer.capacity();
++            std::cout<<"log consumer:"<<log.log<<std::endl;
++        
++            
++        }else{
++            usleep(2000000);
++        }
++        }
++       
++    }
++
++    return 0;
++}
+diff --git a/log_creator.cc b/log_creator.cc
+new file mode 100644
+index 0000000..038fdd7
+--- /dev/null
++++ b/log_creator.cc
+@@ -0,0 +1,43 @@
++#include <iostream>
++#include <cstdio>
++#include <unistd.h>
++#include <cstdlib>
++#include <cstring>
++#include <ctime>
++#include "shmringbuffer.hh"
++
++struct LogNode {
++    int ts;  // timestamp
++    int len; // length
++#define MAX_LOG_LEN 256000
++    char log[MAX_LOG_LEN];
++
++    const std::string unparse() {
++        return "[" + std::to_string(ts) + "] " + std::string(&log[0]);
++    }
++};
++
++int main()
++{
++    /* initialize random seed: */
++    srand (time(NULL));
++
++    const int CAPACITY = 20;
++    {
++        ShmRingBuffer<LogNode> buffer(CAPACITY, true);
++        int start = 2000;
++        LogNode log;
++        while (1) {
++            for (int i = start; i < start + 10*CAPACITY; ++i){
++                snprintf(log.log, MAX_LOG_LEN, "%zu: %d", buffer.end(), i);
++                //std::cout<<"log.log is "<<log.log<<std::endl;
++                buffer.push_back(log);
++                std::cout << "log creator: " << i << ", index " << buffer.end() << std::endl;
++                usleep(1000000);
++            }
++
++        }
++    }
++
++    return 0;
++}
+diff --git a/shmringbuffer.hh b/shmringbuffer.hh
+index 56eddf8..06f9e01 100644
+--- a/shmringbuffer.hh
++++ b/shmringbuffer.hh
+@@ -43,7 +43,9 @@ public:
+     void clear();   // clear buffer
+     void push_back(const T&); // insert new event
+     T dump_front();
++    T pop(int index);
+     string unparse() const; // dump contents in the buffer to a string
++    void print() const;
+ 
+ private:
+     // Mutex, Condition and ReadWriteLock must be POD type to use shared memory
+@@ -284,6 +286,19 @@ ShmRingBuffer<T>::push_back(const T& e)
+     _lock->write_unlock();
+ }
+ 
++template <typename T> inline T 
++ShmRingBuffer<T>::pop(int index)
++{
++    assert(_hdr != NULL);
++    assert(_v != NULL);
++
++    T ret;
++    _lock->read_lock();
++    ret = *(_v + index);
++    _lock->read_unlock();
++    return ret;
++}
++
+ template <typename T> inline T
+ ShmRingBuffer<T>::dump_front()
+ {
+@@ -319,5 +334,31 @@ ShmRingBuffer<T>::unparse() const {
+     return ret;
+ }
+ 
++template <typename T> inline void
++ShmRingBuffer<T>::print() const {
++    assert(_hdr != NULL);
++    assert(_v != NULL);
++    string ret;
++    
++    int i = _hdr->_begin;
++    while(1){
++        if (i !=_hdr->_end){
++            _lock->read_lock();
++            std::cout<<_hdr->_begin<<std::endl;
++            std::cout<<_hdr->_end<<std::endl;
++            ret += string((_v + i)->unparse()) + "\n"; 
++            i = (i+1) % _hdr->_capacity;
++            std::cout<<ret<<std::endl;
++            _lock->read_unlock();
++            
++        }else{
++            usleep(2000000);
++        }
++       
++    }
++
++    
++}
++
+ 
+ #endif
+diff --git a/test_shmringbuffer.cc b/test_shmringbuffer.cc
+index c89ae3d..47f6a25 100644
+--- a/test_shmringbuffer.cc
++++ b/test_shmringbuffer.cc
+@@ -9,7 +9,7 @@
+ struct LogNode {
+     int ts;  // timestamp
+     int len; // length
+-#define MAX_LOG_LEN 256
++#define MAX_LOG_LEN 256000
+     char log[MAX_LOG_LEN];
+ 
+     const std::string unparse() {
+@@ -34,7 +34,7 @@ int main()
+             snprintf(log.log, MAX_LOG_LEN, "%zu: %d", buffer.end(), i);
+             buffer.push_back(log);
+             std::cout << "child: insert " << i << ", index " << buffer.end() << std::endl; // FIXME
+-            usleep(rand()%1000+500);
++            usleep(rand()%1000+500000);
+         }
+         exit(0);
+     } else if (pid > 0) {
+@@ -46,7 +46,7 @@ int main()
+             snprintf(log.log, MAX_LOG_LEN, "%zu: %d", buffer.end(), i);
+             buffer.push_back(log);
+             std::cout << "parent: insert " << i << ", index " << buffer.end() << std::endl; // FIXME
+-            usleep(rand()%900+500);
++            usleep(rand()%900+500000);
+         }
+ 
+         usleep(5000); // wait for child process exit
+-- 
+2.25.1
+

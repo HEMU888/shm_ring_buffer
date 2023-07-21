@@ -1,9 +1,9 @@
 CC=g++
 CFLAGS=-c -g -Wall
 LDFLAGS=-lpthread -lrt
-SOURCES=test_shmringbuffer.cc
+SOURCES=log_creator.cc
 OBJECTS=$(SOURCES:.cc=.o)
-EXECUTABLE=shmringbuf
+EXECUTABLE=log_creator
 
 all: $(SOURCES) $(EXECUTABLE)
     
